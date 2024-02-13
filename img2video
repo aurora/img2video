@@ -1,0 +1,219 @@
+#!/usr/bin/env bash
+
+# img2video
+# Copyright (C) 2024-present by Harald Lapp <harald@octris.org>
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+#
+# This script can be found at:
+# https://github.com/aurora/img2video
+#
+
+#
+# Thanks very much to all users and contributors! All bug-reports,
+# feature-requests, patches, etc. are greatly appreciated! :-)
+#
+
+# init
+#
+version="0.0.1"
+version_date="2024-02-13"
+version_string="img2video $version ($version_date)"
+
+# check for required commands
+if ! command -v ffmpeg &>/dev/null; then
+    echo "ffmpeg is required"
+    exit 1
+elif ! command -v convert &>/dev/null; then
+    echo "imagemagick convert is required"
+    exit 1
+fi
+
+# defaults
+transition=3
+duration=5
+resolution="1920x1080"
+output=""
+filepaths=()
+effects="fade"
+
+# process command-line parameters
+function showusage {
+    echo "usage: $(basename $0) [arguments] [--] <path-1> [<path-2> ... <path-n>]
+
+-o, --output        Name of output file. Required parameter.
+-r, --resolution    Output resolution.
+                    Defaults to: $resolution.
+-d, --duration      Duration to display the image between the transition.
+                    Defaults to: $duration. 
+-t, --transition    Time of the transition between two images.
+                    Defaults to: $transition.
+-e, --effect        Transition effect to use.
+                    Defaults to: $effects.
+-h, --help          Display this usage information.
+    --version       Show version and exit.
+"
+}
+
+function showerror {
+    echo "error: $1"
+}
+
+if [[ "$1" = "" ]]; then
+    showusage
+    exit 0
+fi
+
+while [[ "$1" != "" ]]; do
+    case $1 in
+        -o|--output)
+            output=$2
+            shift
+            ;;
+        -r|--resolution)
+            if ! [[ "$2" =~ ^[1-9][0-9]*x[1-9][0-9]*$ ]]; then
+                showerror "resolution must be in the format <width>x<height>"
+                exit 1
+            fi
+
+            resolution=$2
+            shift
+            ;;
+        -d|--duration)
+            if ! [[ "$2" =~ ^[0-9]+$ ]]; then
+                showerror "duration time is not a number"
+                exit 1
+            fi
+
+            duration=$2
+            shift
+            ;;
+        -t|--transition)
+            if ! [[ "$2" =~ ^[0-9]+$ ]]; then
+                showerror "transition time is not a number"
+                exit 1
+            fi
+
+            transition=$2
+            shift
+            ;;
+        -e|--effect)
+            effects=$2
+            shift
+            ;;
+        --)
+            shift
+            break
+            ;;
+        --version)
+            showusage
+            exit 0
+            ;;
+        -h|-\?|--help)
+            showusage
+            exit 0
+            ;;
+        *)
+            if [[ "${1:0:1}" = "-" ]]; then
+                showerror "unknown parameter $1"
+                exit 1
+            else
+                filepaths+=("$1")
+            fi
+            ;;
+    esac
+
+    shift
+done
+
+if [[ "$output" = "" ]]; then
+    showerror "no output file specified"
+    exit 1
+fi
+
+filepaths=("${filepaths[@]}" "$@")
+
+if [ "${filepaths[*]}" = "" ]; then
+    showerror "no input files specified"
+    exit 1
+elif [[ ${#filepaths[@]} -lt 2 ]]; then
+    showerror "there should be at least two input files"
+    exit 1
+fi
+
+# setup temporary directory
+tempdir=$(mktemp -d)
+
+if [ ! -d "$tempdir" ]; then
+    showerror "unable to create tmp directory $tempdir"
+    exit 1
+fi
+
+trap "exit 1"               HUP INT PIPE QUIT TERM
+trap 'rm -rf "$tempdir"'    EXIT
+
+# initialize
+images=${#filepaths[@]}
+totaltime=$(($transition + $duration))
+
+# convert images to match a resolution of 1920x1080
+for ((i=0;i<${#filepaths[@]};i++)); do
+    if [ ! -f "${filepaths[$i]}" ]; then
+        echo "warning: file not found ${filepaths[$i]}"
+    else
+        convert "${filepaths[$i]}" \
+            -resize $resolution -background black \
+            -gravity center -extent $resolution \
+            +repage "$tempdir/$((i + 1)).jpg"
+        
+        if [ $? -ne 0 ]; then
+            echo "warning: unable to convert image"
+        fi
+    fi
+done
+
+# check if we still have enough input files
+images=$(ls $tempdir/*.jpg 2>/dev/null | wc -l)
+
+if [[ $images -lt 2 ]]; then
+    showerror "there should be at least two input files"
+    exit 1
+fi
+
+# convert images to video slideshow
+loop=""
+filter=""
+offset=0
+
+idx=1
+
+for i in $tempdir/*.jpg; do
+    loop="$loop -loop 1 -t $totaltime -i $i"
+
+    if [[ $idx -lt $images ]]; then
+        if [ $idx -eq 1 ]; then
+            filter="[0]"
+        else
+            filter="$filter;[f$((idx - 2))]"
+        fi
+
+        offset=$(($totaltime + $offset - $transition))
+        filter="$filter[$idx]xfade=transition=$effects:duration=$transition:offset=$offset[f$((idx - 1))]"
+
+        idx=$((idx + 1))
+    fi
+done
+
+ffmpeg $loop -filter_complex """$filter""" -map [f$((idx - 2))] -r 25 -pix_fmt yuv420p $output
