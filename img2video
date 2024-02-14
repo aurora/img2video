@@ -85,7 +85,7 @@ fi
 while [[ "$1" != "" ]]; do
     case $1 in
         -o|--output)
-            output=$2
+            output=${2//.[Mm][Pp]4}.mp4
             shift
             ;;
         -r|--resolution)
