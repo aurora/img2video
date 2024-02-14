@@ -59,7 +59,7 @@ function showusage {
 -r, --resolution    Output resolution.
                     Defaults to: $resolution.
 -d, --duration      Duration to display the image between the transition.
-                    Defaults to: $duration. 
+                    Defaults to: $duration.
 -t, --transition    Time of the transition between two images.
                     Defaults to: $transition.
 -e, --effect        Transition effect to use. Can be specified multiple times.
@@ -116,7 +116,7 @@ while [[ "$1" != "" ]]; do
             shift
             ;;
         -e|--effect)
-            if ! [[ "$xfade" =~ [[:space:]]$2[[:space:]] ]]; then
+            if ! [[ "$2" = "random" ]] && ! [[ "$xfade" =~ [[:space:]]$2[[:space:]] ]]; then
                 showerror "unknown effect $2"
                 exit 1
             fi
@@ -191,7 +191,7 @@ for ((i=0;i<${#filepaths[@]};i++)); do
             -resize $resolution -background black \
             -gravity center -extent $resolution \
             +repage "$tempdir/$((i + 1)).jpg"
-        
+
         if [ $? -ne 0 ]; then
             echo "warning: unable to convert image"
         fi
@@ -208,6 +208,7 @@ fi
 
 # convert images to video slideshow
 effects_cnt=${#effects[@]}
+effect=""
 loop=""
 filter=""
 offset=0
@@ -225,8 +226,13 @@ for i in $tempdir/*.jpg; do
         fi
 
         offset=$(($totaltime + $offset - $transition))
-        effect=${effects[$((($idx - 1) % $effects_cnt))]}
-        
+        effect_idx=$((($idx - 1) % $effects_cnt))
+
+        case ${effects[$effect_idx]} in
+            random) effect=$(echo $xfade | tr ' ' "\n" | grep -vw "$effect" | shuf -n 1) ;;
+            *) effect=${effects[$effect_idx]}
+        esac
+
         filter="$filter[$idx]xfade=transition=$effect:duration=$transition:offset=$offset[f$((idx - 1))]"
 
         idx=$((idx + 1))
