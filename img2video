@@ -42,16 +42,18 @@ elif ! command -v convert &>/dev/null; then
 fi
 
 # defaults
+xfade=" circleclose circlecrop circleopen diagbl diagbr diagtl diagtr dissolve distance fade fadeblack fadegrays fadewhite hblur hlslice horzclose horzopen hrslice pixelize radial rectcrop slidedown slideleft slideright slideup smoothdown smoothleft smoothright smoothup squeezeh squeezev vdslice vertclose vertopen vuslice wipebl wipebr wipedown wipeleft wiperight wipetl wipetr wipeup zoomin "
 transition=3
 duration=5
 resolution="1920x1080"
 output=""
 filepaths=()
-effects="fade"
+effect_default="fade"
+effects=()
 
 # process command-line parameters
 function showusage {
-    echo "usage: $(basename $0) [arguments] [--] <path-1> [<path-2> ... <path-n>]
+    echo "usage: $(basename $0) -o <out-file>.mp4 [arguments] [--] <path-1> [<path-2> ...]
 
 -o, --output        Name of output file. Required parameter.
 -r, --resolution    Output resolution.
@@ -60,10 +62,14 @@ function showusage {
                     Defaults to: $duration. 
 -t, --transition    Time of the transition between two images.
                     Defaults to: $transition.
--e, --effect        Transition effect to use.
-                    Defaults to: $effects.
+-e, --effect        Transition effect to use. Can be specified multiple times.
+                    Defaults to: $effect_default.
 -h, --help          Display this usage information.
     --version       Show version and exit.
+
+Possible effects:
+
+$(echo $xfade | fmt | sed 's/^/    /g')
 "
 }
 
@@ -110,7 +116,12 @@ while [[ "$1" != "" ]]; do
             shift
             ;;
         -e|--effect)
-            effects=$2
+            if ! [[ "$xfade" =~ [[:space:]]$2[[:space:]] ]]; then
+                showerror "unknown effect $2"
+                exit 1
+            fi
+
+            effects+=("$2")
             shift
             ;;
         --)
@@ -153,6 +164,10 @@ elif [[ ${#filepaths[@]} -lt 2 ]]; then
     exit 1
 fi
 
+if [[ "${effects[@]}" = "" ]]; then
+    effects=("$effect_default")
+fi
+
 # setup temporary directory
 tempdir=$(mktemp -d)
 
@@ -165,7 +180,6 @@ trap "exit 1"               HUP INT PIPE QUIT TERM
 trap 'rm -rf "$tempdir"'    EXIT
 
 # initialize
-images=${#filepaths[@]}
 totaltime=$(($transition + $duration))
 
 # convert images to match a resolution of 1920x1080
@@ -185,14 +199,15 @@ for ((i=0;i<${#filepaths[@]};i++)); do
 done
 
 # check if we still have enough input files
-images=$(ls $tempdir/*.jpg 2>/dev/null | wc -l)
+images_cnt=$(ls $tempdir/*.jpg 2>/dev/null | wc -l)
 
-if [[ $images -lt 2 ]]; then
+if [[ $images_cnt -lt 2 ]]; then
     showerror "there should be at least two input files"
     exit 1
 fi
 
 # convert images to video slideshow
+effects_cnt=${#effects[@]}
 loop=""
 filter=""
 offset=0
@@ -202,15 +217,17 @@ idx=1
 for i in $tempdir/*.jpg; do
     loop="$loop -loop 1 -t $totaltime -i $i"
 
-    if [[ $idx -lt $images ]]; then
-        if [ $idx -eq 1 ]; then
+    if [[ $idx -lt $images_cnt ]]; then
+        if [[ $idx -eq 1 ]]; then
             filter="[0]"
         else
             filter="$filter;[f$((idx - 2))]"
         fi
 
         offset=$(($totaltime + $offset - $transition))
-        filter="$filter[$idx]xfade=transition=$effects:duration=$transition:offset=$offset[f$((idx - 1))]"
+        effect=${effects[$((($idx - 1) % $effects_cnt))]}
+        
+        filter="$filter[$idx]xfade=transition=$effect:duration=$transition:offset=$offset[f$((idx - 1))]"
 
         idx=$((idx + 1))
     fi
