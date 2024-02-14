@@ -183,17 +183,19 @@ trap 'rm -rf "$tempdir"'    EXIT
 totaltime=$(($transition + $duration))
 
 # convert images to match a resolution of 1920x1080
-for ((i=0;i<${#filepaths[@]};i++)); do
+for ((i=0,c=0;i<${#filepaths[@]};i++)); do
     if [ ! -f "${filepaths[$i]}" ]; then
         echo "warning: file not found ${filepaths[$i]}"
     else
         convert "${filepaths[$i]}" \
             -resize $resolution -background black \
             -gravity center -extent $resolution \
-            +repage "$tempdir/$((i + 1)).jpg"
+            +repage "$tempdir/$((c + 2)).jpg"
 
         if [ $? -ne 0 ]; then
             echo "warning: unable to convert image"
+        else
+            c=$((c + 1))
         fi
     fi
 done
@@ -206,6 +208,11 @@ if [[ $images_cnt -lt 2 ]]; then
     exit 1
 fi
 
+convert -size $resolution canvas:black -type truecolor $tempdir/1.jpg
+cp $tempdir/1.jpg $tempdir/$((images_cnt + 2)).jpg
+
+images_cnt=$((images_cnt + 2))
+
 # convert images to video slideshow
 effects_cnt=${#effects[@]}
 effect=""
@@ -216,7 +223,16 @@ offset=0
 idx=1
 
 for i in $tempdir/*.jpg; do
-    loop="$loop -loop 1 -t $totaltime -i $i"
+    if [[ $idx -eq 1 ]]; then
+        duration=$((transition + 1))
+        loop="-loop 1 -t $duration -i $i"
+    elif [[ $idx -eq $images_cnt ]]; then
+        duration=$((transition + 1))
+        loop="$loop -loop 1 -t $duration -i $i"
+    else
+        duration=$totaltime
+        loop="$loop -loop 1 -t $totaltime -i $i"
+    fi
 
     if [[ $idx -lt $images_cnt ]]; then
         if [[ $idx -eq 1 ]]; then
@@ -225,7 +241,7 @@ for i in $tempdir/*.jpg; do
             filter="$filter;[f$((idx - 2))]"
         fi
 
-        offset=$(($totaltime + $offset - $transition))
+        offset=$(($duration + $offset - $transition))
         effect_idx=$((($idx - 1) % $effects_cnt))
 
         case ${effects[$effect_idx]} in
