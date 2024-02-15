@@ -137,7 +137,7 @@ while [[ "$1" != "" ]]; do
             break
             ;;
         --version)
-            showusage
+            echo $version_string
             exit 0
             ;;
         -h|-\?|--help)
