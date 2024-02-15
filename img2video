@@ -28,8 +28,8 @@
 
 # init
 #
-version="0.0.1"
-version_date="2024-02-13"
+version="1.0.0"
+version_date="2024-02-15"
 version_string="img2video $version ($version_date)"
 
 # check for required commands
