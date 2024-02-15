@@ -57,25 +57,25 @@ function showusage {
 
 ARGUMENTS
 
-    -o, --output        Name of output file. Required parameter.
-    -r, --resolution    Output resolution.
-                        Defaults to: $resolution.
-    -d, --duration      Duration to display the image between the transition.
-                    Defaults to: $duration.
-    -t, --transition    Time of the transition between two images.
-                        Defaults to: $transition.
-    -e, --effect        Transition effect to use. Can be specified multiple times.
-                        Defaults to: $effect_default.
-    -h, --help          Display this usage information.
-        --version       Show version and exit.
+  -o, --output        Name of output file. Required parameter.
+  -r, --resolution    Output resolution.
+                      Defaults to: $resolution.
+  -d, --duration      Duration to display the image between the transition.
+                      Defaults to: $duration.
+  -t, --transition    Time of the transition between two images.
+                      Defaults to: $transition.
+  -e, --effect        Transition effect to use. Can be specified multiple times.
+                      Defaults to: $effect_default.
+  -h, --help          Display this usage information.
+      --version       Show version and exit.
 
 EFFECTS
 
     random
 
-  Random is a pseudo-filter that selects a random xfade filter and ensures
-  that a filter is not repeated directly. The following xfade transition
-  filters are currently available:
+  The effect 'random' is a pseudo-effect that selects a random xfade filter
+  effect and ensures that an effect is not repeated directly. The following
+  is a list of currently available xfade transition effects:
 
 $(echo $xfade | fmt | sed 's/^/    /g')
 "
