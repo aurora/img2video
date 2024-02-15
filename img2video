@@ -55,19 +55,27 @@ effects=()
 function showusage {
     echo "usage: $(basename $0) -o <out-file>.mp4 [arguments] [--] <path-1> [<path-2> ...]
 
--o, --output        Name of output file. Required parameter.
--r, --resolution    Output resolution.
-                    Defaults to: $resolution.
--d, --duration      Duration to display the image between the transition.
-                    Defaults to: $duration.
--t, --transition    Time of the transition between two images.
-                    Defaults to: $transition.
--e, --effect        Transition effect to use. Can be specified multiple times.
-                    Defaults to: $effect_default.
--h, --help          Display this usage information.
-    --version       Show version and exit.
+ARGUMENTS
 
-Possible effects:
+    -o, --output        Name of output file. Required parameter.
+    -r, --resolution    Output resolution.
+                        Defaults to: $resolution.
+    -d, --duration      Duration to display the image between the transition.
+                    Defaults to: $duration.
+    -t, --transition    Time of the transition between two images.
+                        Defaults to: $transition.
+    -e, --effect        Transition effect to use. Can be specified multiple times.
+                        Defaults to: $effect_default.
+    -h, --help          Display this usage information.
+        --version       Show version and exit.
+
+EFFECTS
+
+    random
+
+  Random is a pseudo-filter that selects a random xfade filter and ensures
+  that a filter is not repeated directly. The following xfade transition
+  filters are currently available:
 
 $(echo $xfade | fmt | sed 's/^/    /g')
 "

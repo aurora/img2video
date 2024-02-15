@@ -40,6 +40,10 @@ $ img2video -o <out-file>.mp4 [arguments] [--] <path-1> [<path-2> ...]
 
 This script uses *xfade* for transition of images.
 
+* random
+
+Random is a pseudo-filter that selects a random xfade filter and ensures that a filter is not repeated directly. The following is a list of currently available xfade transition filters:
+
 * circleclose
 * circlecrop
 * circleopen
