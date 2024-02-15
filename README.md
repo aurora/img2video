@@ -4,6 +4,16 @@
 
 This script can be used to create a video slideshow from multiple images.
 
+## Example
+
+The video below was created using the following command:
+
+```console
+$ img2video -o example.mp4 -r 640x480 -e random photos/*.jpg
+```
+
+[Example Video -- all photos (c) by Harald Lapp](https://github.com/aurora/img2video/assets/304837/e6e4034c-af0f-48fa-a87d-b6d66fe1b154)
+
 ## Quick install
 
 ```bash
