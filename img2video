@@ -159,9 +159,6 @@ filepaths=("${filepaths[@]}" "$@")
 if [ "${filepaths[*]}" = "" ]; then
     showerror "no input files specified"
     exit 1
-elif [[ ${#filepaths[@]} -lt 2 ]]; then
-    showerror "there should be at least two input files"
-    exit 1
 fi
 
 if [[ "${effects[@]}" = "" ]]; then
@@ -203,8 +200,8 @@ done
 # check if we still have enough input files
 images_cnt=$(ls $tempdir/*.jpg 2>/dev/null | wc -l)
 
-if [[ $images_cnt -lt 2 ]]; then
-    showerror "there should be at least two input files"
+if [[ $images_cnt -eq 0 ]]; then
+    showerror "no input files"
     exit 1
 fi
 
